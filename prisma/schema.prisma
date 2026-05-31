@@ -1,0 +1,111 @@
+// Esquema del Sistema de Gestión de Biblioteca.
+//
+// Modelo de dominio:
+//   - User     → usuario de la app (espejo de Supabase auth.users, mismo UUID).
+//   - Book     → "Maestro": un título con su inventario (saldo = totalCopies).
+//   - Movement → "Transacción": cambio de inventario (INCOMING / OUTGOING).
+//                Es lo único que modifica Book.totalCopies.
+//   - Loan     → préstamo (extra). NO cambia totalCopies.
+//
+// La disponibilidad es derivada, no almacenada:
+//   availableCopies(book) = book.totalCopies - count(préstamos activos)
+//
+// Identificadores y enums en inglés; solo los mensajes de la API van en español.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum MovementType {
+  INCOMING
+  OUTGOING
+}
+
+enum ReturnCondition {
+  GOOD
+  DAMAGED
+}
+
+// Usuario de la app. La autenticación vive en Supabase Auth; esta tabla la
+// espeja con el mismo UUID como PK para guardar rol, nombre y avatar.
+model User {
+  id        String   @id
+  name      String
+  email     String   @unique
+  image     String?
+  role      Role     @default(USER)
+  deleted   Boolean  @default(false)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBooks Book[]     @relation("BookCreatedBy")
+  movements    Movement[] @relation("MovementByUser")
+  loans        Loan[]
+}
+
+// Maestro del catálogo. `totalCopies` es el saldo, sincronizado de forma
+// transaccional en cada Movement.
+model Book {
+  id          String   @id @default(cuid())
+  title       String
+  author      String?
+  description String?
+  totalCopies Int      @default(0)
+  deleted     Boolean  @default(false)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String
+  createdBy   User       @relation("BookCreatedBy", fields: [createdById], references: [id])
+  movements   Movement[]
+  loans       Loan[]
+}
+
+// Movimiento de inventario. Cambia Book.totalCopies. `user` es el responsable.
+model Movement {
+  id        String       @id @default(cuid())
+  type      MovementType
+  quantity  Int
+  createdAt DateTime     @default(now())
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id])
+
+  userId String
+  user   User   @relation("MovementByUser", fields: [userId], references: [id])
+
+  @@index([bookId, createdAt])
+}
+
+// Préstamo (tabla pivote User–Book). No cambia el inventario.
+// returnedAt == null → activo; si no, devuelto y returnCondition guarda su estado.
+model Loan {
+  id              String           @id @default(cuid())
+  loanedAt        DateTime         @default(now())
+  returnedAt      DateTime?
+  returnCondition ReturnCondition?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, returnedAt])
+  @@index([bookId, returnedAt])
+}
