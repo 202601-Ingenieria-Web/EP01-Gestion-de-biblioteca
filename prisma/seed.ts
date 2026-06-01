@@ -1,5 +1,5 @@
 // Seed de la base de datos. Crea 2 usuarios (ADMIN/USER) en Supabase Auth y su
-// espejo en public.User, 2 Maestros de ejemplo, 2 movimientos (para que la
+// espejo en public.User, 2 Libros de ejemplo, 2 movimientos (para que la
 // gráfica no quede vacía) y 2 préstamos demo (uno activo, uno devuelto).
 // Las credenciales son las del README. Ejecutar con: npm run db:seed
 import "dotenv/config";

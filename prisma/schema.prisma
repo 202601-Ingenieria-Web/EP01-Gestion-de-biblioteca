@@ -2,7 +2,7 @@
 //
 // Modelo de dominio:
 //   - User     → usuario de la app (espejo de Supabase auth.users, mismo UUID).
-//   - Book     → "Maestro": un título con su inventario (saldo = totalCopies).
+//   - Book     → libro del catálogo, con su inventario (copias = totalCopies).
 //   - Movement → "Transacción": cambio de inventario (INCOMING / OUTGOING).
 //                Es lo único que modifica Book.totalCopies.
 //   - Loan     → préstamo (extra). NO cambia totalCopies.
@@ -54,7 +54,7 @@ model User {
   loans        Loan[]
 }
 
-// Maestro del catálogo. `totalCopies` es el saldo, sincronizado de forma
+// Libro del catálogo. `totalCopies` es el total de copias, sincronizado de forma
 // transaccional en cada Movement.
 model Book {
   id          String   @id @default(cuid())
