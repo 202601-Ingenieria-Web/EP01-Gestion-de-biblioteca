@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paleta "biblioteca clásica" — tonos cálidos madera y papel */
+  --parchment:     #f5f0e8;
+  --parchment-dark:#ede5d0;
+  --ink:           #1c1209;
+  --ink-soft:      #3d2b1f;
+  --wood:          #6b3f1e;
+  --wood-light:    #a0622b;
+  --wood-muted:    #c49a6c;
+  --gold:          #b8860b;
+  --gold-light:    #d4a843;
+  --cream:         #fdf8f0;
+  --sidebar-bg:    #1e1208;
+  --sidebar-text:  #e8d5b0;
+  --sidebar-muted: #8a6f50;
+  --card-bg:       #fffdf7;
+  --border:        #d6c4a0;
+  --danger:        #9b2335;
+  --success:       #2d6a4f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-parchment:    var(--parchment);
+  --color-parchment-dark: var(--parchment-dark);
+  --color-ink:          var(--ink);
+  --color-ink-soft:     var(--ink-soft);
+  --color-wood:         var(--wood);
+  --color-wood-light:   var(--wood-light);
+  --color-wood-muted:   var(--wood-muted);
+  --color-gold:         var(--gold);
+  --color-gold-light:   var(--gold-light);
+  --color-cream:        var(--cream);
+  --color-sidebar-bg:   var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-muted:var(--sidebar-muted);
+  --color-card-bg:      var(--card-bg);
+  --color-border:       var(--border);
+  --color-danger:       var(--danger);
+  --color-success:      var(--success);
   --font-sans: var(--font-geist-sans);
+  --font-serif: Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--parchment);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* Scrollbar personalizado al estilo madera */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--parchment-dark); }
+::-webkit-scrollbar-thumb  { background: var(--wood-muted); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--wood); }

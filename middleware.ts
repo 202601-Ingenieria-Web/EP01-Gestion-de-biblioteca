@@ -13,7 +13,7 @@ function startsWithAny(path: string, prefixes: string[]): boolean {
   return prefixes.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   let res = NextResponse.next({
