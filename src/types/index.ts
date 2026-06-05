@@ -19,9 +19,9 @@ export interface BookSummary {
   title: string;
   author: string | null;
   description: string | null;
-  totalCopies: number;
-  activeLoans: number;
-  availableCopies: number;
+  totalCopies?: number;
+  activeLoans?: number;
+  availableCopies?: number;
   createdAt: string;
   createdBy: { id: string; name: string; email: string };
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getBooksApi, getMovementsApi, createMovementApi } from "@/lib/client-api";
+import { useAuth } from "@/context/AuthContext";
 import type { BookSummary, Movement } from "@/types";
 import { PageSpinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
@@ -35,7 +38,7 @@ function MovementModal({
     try {
       const { movement } = await createMovementApi({ bookId: book.id, type, quantity: q });
       const delta = type === "INCOMING" ? q : -q;
-      onCreated(movement, book.totalCopies + delta);
+      onCreated(movement, (book.totalCopies ?? 0) + delta);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar el movimiento.");
@@ -134,12 +137,11 @@ function BookInventoryRow({
         </td>
         <td className="px-4 py-3 text-center font-mono text-sm font-semibold">{book.totalCopies}</td>
         <td className="px-4 py-3 text-center">
-          {book.availableCopies === 0
-            ? <Badge variant="danger">{book.availableCopies}</Badge>
-            : book.availableCopies <= 2
-            ? <Badge variant="warning">{book.availableCopies}</Badge>
-            : <Badge variant="success">{book.availableCopies}</Badge>
-          }
+          {(() => {
+            const available = book.availableCopies ?? 0;
+            const variant = available === 0 ? "danger" : available <= 2 ? "warning" : "success";
+            return <Badge variant={variant}>{available}</Badge>;
+          })()}
         </td>
         <td className="px-4 py-3 text-center font-mono text-sm text-danger">{book.activeLoans}</td>
         <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
@@ -200,6 +202,10 @@ function BookInventoryRow({
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const isAdmin = user?.role === "ADMIN";
+
   const [books,     setBooks]     = useState<BookSummary[]>([]);
   const [movements, setMovements] = useState<Record<string, Movement[]>>({});
   const [loading,   setLoading]   = useState(true);
@@ -207,7 +213,8 @@ export default function InventoryPage() {
   const [active,    setActive]    = useState<BookSummary | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // El inventario es solo para ADMIN; nunca pedimos movimientos como USER.
+    if (!isAdmin) return;
     try {
       const { books } = await getBooksApi();
       setBooks(books);
@@ -222,9 +229,17 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (authLoading) return;
+    // Sin permisos: fuera del inventario.
+    if (!isAdmin) {
+      router.replace("/books");
+      return;
+    }
+    load();
+  }, [authLoading, isAdmin, load, router]);
 
   function handleCreated(bookId: string, m: Movement, newTotal: number) {
     setMovements((prev) => ({
@@ -233,7 +248,7 @@ export default function InventoryPage() {
     }));
     setBooks((prev) =>
       prev.map((b) =>
-        b.id === bookId ? { ...b, totalCopies: newTotal, availableCopies: newTotal - b.activeLoans } : b
+        b.id === bookId ? { ...b, totalCopies: newTotal, availableCopies: newTotal - (b.activeLoans ?? 0) } : b
       )
     );
   }
@@ -243,6 +258,19 @@ export default function InventoryPage() {
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       (b.author ?? "").toLowerCase().includes(search.toLowerCase())
   );
+
+  // Mientras resolvemos la sesión o redirigimos a un USER, no mostramos el inventario.
+  if (authLoading || !user) return <PageSpinner />;
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-32 gap-4">
+        <p className="text-stone-500">No tienes permiso para ver el inventario.</p>
+        <Link href="/books">
+          <Button variant="secondary">Ir al catálogo</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-8">

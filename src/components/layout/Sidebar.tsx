@@ -60,7 +60,7 @@ function LogoutIcon() {
 const NAV_ITEMS: NavItem[] = [
   { href: "/books",     label: "Catálogo",   icon: <BookIcon /> },
   { href: "/loans",     label: "Préstamos",  icon: <LoanIcon /> },
-  { href: "/inventory", label: "Inventario", icon: <InventoryIcon /> },
+  { href: "/inventory", label: "Inventario", icon: <InventoryIcon />, adminOnly: true },
   { href: "/users",     label: "Usuarios",   icon: <UsersIcon />, adminOnly: true },
 ];
 

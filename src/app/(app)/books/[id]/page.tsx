@@ -9,7 +9,6 @@ import {
   getMovementsApi,
   getLoansApi,
   createLoanApi,
-  createMovementApi,
 } from "@/lib/client-api";
 import { useAuth } from "@/context/AuthContext";
 import type { BookSummary, AvailabilitySeries, Movement, Loan } from "@/types";
@@ -203,6 +202,7 @@ export default function BookDetailPage({
 }) {
   const { id } = use(params);
   const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const [book,         setBook]         = useState<BookSummary | null>(null);
   const [availability, setAvailability] = useState<AvailabilitySeries | null>(null);
@@ -218,24 +218,35 @@ export default function BookDetailPage({
 
   const load = useCallback(async () => {
     try {
-      const [bookRes, availRes, movRes, loansRes] = await Promise.all([
+      // Catálogo + préstamos los ve cualquier usuario (el USER solo los suyos).
+      const [bookRes, loansRes] = await Promise.all([
         getBookApi(id),
-        getBookAvailabilityApi(id),
-        getMovementsApi(id),
         getLoansApi({ bookId: id }),
       ]);
       setBook(bookRes.book);
-      setAvailability(availRes);
-      setMovements(movRes.movements);
       setLoans(loansRes.loans);
+
+      // Inventario (disponibilidad + movimientos): solo ADMIN. Para el USER
+      // estos endpoints devuelven 403, así que no los pedimos.
+      if (isAdmin) {
+        const [availRes, movRes] = await Promise.all([
+          getBookAvailabilityApi(id),
+          getMovementsApi(id),
+        ]);
+        setAvailability(availRes);
+        setMovements(movRes.movements);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("no encontrado") || msg.includes("NOT_FOUND")) setNotFound(true);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, isAdmin]);
 
+  // load depende de isAdmin: mientras el rol no esté resuelto se piden solo
+  // catálogo y préstamos; al confirmarse ADMIN se vuelve a correr y trae el
+  // inventario. Así un USER nunca llega a pedir los endpoints de inventario.
   useEffect(() => { load(); }, [load]);
 
   async function handleLoan(e: React.FormEvent) {
@@ -264,8 +275,9 @@ export default function BookDetailPage({
     );
   }
 
-  const available = book.availableCopies;
-  const total     = book.totalCopies;
+  // Para USER estos campos no llegan; solo se usan en las secciones de ADMIN.
+  const available = book.availableCopies ?? 0;
+  const total     = book.totalCopies ?? 0;
 
   return (
     <div className="flex flex-col gap-8 p-8 max-w-5xl mx-auto w-full">
@@ -303,57 +315,74 @@ export default function BookDetailPage({
               {book.description}
             </p>
           )}
-          {/* Stats de copias */}
-          <div className="flex gap-4 flex-wrap mt-1">
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold text-ink">{available}</span>
-              <span className="text-xs text-stone-500">disponibles</span>
+          {/* Stats de copias: inventario, solo ADMIN */}
+          {isAdmin && (
+            <div className="flex gap-4 flex-wrap mt-1">
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-ink">{available}</span>
+                <span className="text-xs text-stone-500">disponibles</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-wood">{book.activeLoans ?? 0}</span>
+                <span className="text-xs text-stone-500">prestadas</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-stone-400">{total}</span>
+                <span className="text-xs text-stone-500">total</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold text-wood">{book.activeLoans}</span>
-              <span className="text-xs text-stone-500">prestadas</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold text-stone-400">{total}</span>
-              <span className="text-xs text-stone-500">total</span>
-            </div>
-          </div>
-          {/* Botón préstamo */}
-          {available > 0 && (
+          )}
+          {/* Botón préstamo. El ADMIN ve el estado de stock; el USER no conoce
+              la disponibilidad, así que siempre puede intentarlo y el back valida. */}
+          {isAdmin ? (
+            <>
+              {available > 0 && (
+                <div className="mt-auto">
+                  <Button onClick={() => setShowLoan(true)} size="sm">
+                    Solicitar préstamo
+                  </Button>
+                </div>
+              )}
+              {available === 0 && (
+                <Badge variant="danger">Sin copias disponibles</Badge>
+              )}
+            </>
+          ) : (
             <div className="mt-auto">
               <Button onClick={() => setShowLoan(true)} size="sm">
                 Solicitar préstamo
               </Button>
             </div>
           )}
-          {available === 0 && (
-            <Badge variant="danger">Sin copias disponibles</Badge>
-          )}
         </div>
       </div>
 
-      {/* Gráfica de disponibilidad */}
-      <section className="bg-card-bg border border-border rounded-xl p-6 shadow-sm">
-        <h2
-          className="text-base font-semibold text-ink mb-4"
-          style={{ fontFamily: "Georgia, serif" }}
-        >
-          Evolución de disponibilidad
-        </h2>
-        {availability && <AvailabilityChart series={availability.series} />}
-      </section>
-
-      {/* Movimientos + Préstamos en dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Gráfica de disponibilidad: inventario, solo ADMIN */}
+      {isAdmin && (
         <section className="bg-card-bg border border-border rounded-xl p-6 shadow-sm">
           <h2
             className="text-base font-semibold text-ink mb-4"
             style={{ fontFamily: "Georgia, serif" }}
           >
-            Movimientos de inventario
+            Evolución de disponibilidad
           </h2>
-          <MovementsTable movements={movements} />
+          {availability && <AvailabilityChart series={availability.series} />}
         </section>
+      )}
+
+      {/* Movimientos (solo ADMIN) + Préstamos */}
+      <div className={`grid grid-cols-1 gap-6 ${isAdmin ? "lg:grid-cols-2" : ""}`}>
+        {isAdmin && (
+          <section className="bg-card-bg border border-border rounded-xl p-6 shadow-sm">
+            <h2
+              className="text-base font-semibold text-ink mb-4"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              Movimientos de inventario
+            </h2>
+            <MovementsTable movements={movements} />
+          </section>
+        )}
 
         <section className="bg-card-bg border border-border rounded-xl p-6 shadow-sm">
           <h2

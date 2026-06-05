@@ -16,8 +16,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 // ─── Card de libro ────────────────────────────────────────────────────────────
 
 function BookCard({ book }: { book: BookSummary }) {
-  const available = book.availableCopies;
-  const total     = book.totalCopies;
+  // Los datos de stock solo llegan para ADMIN; el USER ve la card sin inventario.
+  const hasStock  = book.availableCopies !== undefined && book.totalCopies !== undefined;
+  const available = book.availableCopies ?? 0;
+  const total     = book.totalCopies ?? 0;
   const ratio     = total > 0 ? available / total : 0;
 
   const badge =
@@ -38,15 +40,17 @@ function BookCard({ book }: { book: BookSummary }) {
             fill
             className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-300"
           />
-          {/* Barra de disponibilidad */}
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
-            <div
-              className={`h-full transition-all duration-500 ${
-                ratio === 0 ? "bg-danger" : ratio < 0.3 ? "bg-amber-400" : "bg-success"
-              }`}
-              style={{ width: `${Math.round(ratio * 100)}%` }}
-            />
-          </div>
+          {/* Barra de disponibilidad (solo si hay datos de stock) */}
+          {hasStock && (
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  ratio === 0 ? "bg-danger" : ratio < 0.3 ? "bg-amber-400" : "bg-success"
+                }`}
+                style={{ width: `${Math.round(ratio * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Contenido */}
@@ -63,8 +67,14 @@ function BookCard({ book }: { book: BookSummary }) {
             )}
           </div>
           <div className="flex items-center justify-between mt-2">
-            {badge}
-            <span className="text-xs text-stone-400">{total} en total</span>
+            {hasStock ? (
+              <>
+                {badge}
+                <span className="text-xs text-stone-400">{total} en total</span>
+              </>
+            ) : (
+              <span className="text-xs text-wood font-medium">Ver detalle →</span>
+            )}
           </div>
         </div>
       </article>
