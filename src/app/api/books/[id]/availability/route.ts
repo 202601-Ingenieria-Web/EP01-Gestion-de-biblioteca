@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 
 /** Formatea una fecha como "YYYY-MM-DD" en UTC para que la serie sea estable. */
@@ -19,7 +19,7 @@ function dayKey(date: Date): string {
 }
 
 export const GET = apiHandler(async (_req, ctx) => {
-  await requireUser();
+  await requireAdmin();
   const { id } = await ctx.params;
 
   const book = await prisma.book.findFirst({

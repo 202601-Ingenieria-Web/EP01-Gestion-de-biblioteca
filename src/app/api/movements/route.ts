@@ -1,19 +1,19 @@
 // GET  /api/movements?bookId=… — lista los movimientos de un libro
 // POST /api/movements            — registra un movimiento INCOMING u OUTGOING
 //
-// Según la consigna, AMBOS roles (USER y ADMIN) pueden crear movimientos; queda
-// registrado como responsable el usuario en sesión. El POST va en una
-// transacción para que el Movement y el nuevo `Book.totalCopies` se confirmen
-// juntos.
+// El inventario es solo para ADMIN: tanto ver como registrar movimientos exige
+// rol ADMIN. Queda registrado como responsable el admin en sesión. El POST va
+// en una transacción para que el Movement y el nuevo `Book.totalCopies` se
+// confirmen juntos.
 import { NextResponse } from "next/server";
 import * as z from "zod";
 
 import prisma from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 
 export const GET = apiHandler(async (req) => {
-  await requireUser();
+  await requireAdmin();
 
   const { searchParams } = new URL(req.url);
   const bookId = searchParams.get("bookId");
@@ -52,7 +52,7 @@ const CreateMovementSchema = z.object({
 });
 
 export const POST = apiHandler(async (req) => {
-  const me = await requireUser();
+  const me = await requireAdmin();
 
   const body = await req.json().catch(() => ({}));
   const data = CreateMovementSchema.parse(body);

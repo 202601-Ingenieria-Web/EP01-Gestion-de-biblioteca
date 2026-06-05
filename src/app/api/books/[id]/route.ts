@@ -1,4 +1,5 @@
-// GET /api/books/[id] — detalle de un libro con su disponibilidad actual.
+// GET /api/books/[id] — detalle de un libro. Solo el ADMIN ve su inventario
+// (disponibilidad actual); el USER recibe solo los datos de catálogo.
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
@@ -6,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 
 export const GET = apiHandler(async (_req, ctx) => {
-  await requireUser();
+  const me = await requireUser();
   const { id } = await ctx.params;
 
   const book = await prisma.book.findFirst({
@@ -34,15 +35,17 @@ export const GET = apiHandler(async (_req, ctx) => {
     );
   }
 
-  const { _count, ...rest } = book;
-  return NextResponse.json(
-    {
-      book: {
-        ...rest,
-        activeLoans: _count.loans,
-        availableCopies: rest.totalCopies - _count.loans,
-      },
-    },
-    { status: 200 }
-  );
+  const { _count, totalCopies, ...rest } = book;
+  // El USER no ve inventario: solo catálogo, sin totalCopies ni disponibilidad.
+  const payload =
+    me.role === "ADMIN"
+      ? {
+          ...rest,
+          totalCopies,
+          activeLoans: _count.loans,
+          availableCopies: totalCopies - _count.loans,
+        }
+      : rest;
+
+  return NextResponse.json({ book: payload }, { status: 200 });
 });

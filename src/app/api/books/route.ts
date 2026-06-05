@@ -1,7 +1,9 @@
 // GET  /api/books  — lista libros (USER + ADMIN)
 // POST /api/books  — crea un libro (solo ADMIN)
 //
-// Cada fila expone `availableCopies` = totalCopies − préstamos activos.
+// Para ADMIN cada fila expone los datos de inventario (`totalCopies`,
+// `activeLoans` y `availableCopies` = totalCopies − préstamos activos). Los
+// USER no pueden ver el inventario: reciben solo los datos de catálogo.
 import { NextResponse } from "next/server";
 import * as z from "zod";
 
@@ -10,7 +12,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 
 export const GET = apiHandler(async () => {
-  await requireUser();
+  const me = await requireUser();
 
   // Libros + creador + conteo de préstamos activos en una sola consulta.
   const books = await prisma.book.findMany({
@@ -32,12 +34,19 @@ export const GET = apiHandler(async () => {
     },
   });
 
-  // Aplanamos `_count.loans` a `activeLoans` y derivamos `availableCopies`.
-  const data = books.map(({ _count, ...book }) => ({
-    ...book,
-    activeLoans: _count.loans,
-    availableCopies: book.totalCopies - _count.loans,
-  }));
+  // ADMIN ve el inventario (aplanamos `_count.loans` a `activeLoans` y derivamos
+  // `availableCopies`). El USER recibe solo el catálogo, sin datos de stock.
+  const isAdmin = me.role === "ADMIN";
+  const data = books.map(({ _count, totalCopies, ...book }) =>
+    isAdmin
+      ? {
+          ...book,
+          totalCopies,
+          activeLoans: _count.loans,
+          availableCopies: totalCopies - _count.loans,
+        }
+      : book
+  );
 
   return NextResponse.json({ books: data }, { status: 200 });
 });
