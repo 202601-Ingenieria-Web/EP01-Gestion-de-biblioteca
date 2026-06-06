@@ -74,7 +74,7 @@ function AvailabilityChart({ series }: { series: AvailabilitySeries["series"] })
         {/* Etiquetas eje X */}
         {series
           .filter((_, i) => i === 0 || i === series.length - 1 || i % Math.max(1, Math.floor(series.length / 5)) === 0)
-          .map((d, _, arr) => {
+          .map((d) => {
             const origIdx = series.findIndex((s) => s.date === d.date);
             return (
               <text
@@ -210,44 +210,53 @@ export default function BookDetailPage({
   const [loans,        setLoans]        = useState<Loan[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [notFound,     setNotFound]     = useState(false);
+  const [reloadKey,    setReloadKey]    = useState(0);
 
   const [showLoan,   setShowLoan]   = useState(false);
   const [loanNotes,  setLoanNotes]  = useState("");
   const [loanLoading, setLoanLoading] = useState(false);
   const [loanError,  setLoanError]  = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      // Catálogo + préstamos los ve cualquier usuario (el USER solo los suyos).
-      const [bookRes, loansRes] = await Promise.all([
-        getBookApi(id),
-        getLoansApi({ bookId: id }),
-      ]);
-      setBook(bookRes.book);
-      setLoans(loansRes.loans);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-      // Inventario (disponibilidad + movimientos): solo ADMIN. Para el USER
-      // estos endpoints devuelven 403, así que no los pedimos.
-      if (isAdmin) {
-        const [availRes, movRes] = await Promise.all([
-          getBookAvailabilityApi(id),
-          getMovementsApi(id),
+  // Carga (re)disparada por id, rol o reload(). La función async vive dentro del
+  // effect (patrón con cancelación) para no llamar a setState de forma síncrona
+  // en el cuerpo del effect.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Catálogo + préstamos los ve cualquier usuario (el USER solo los suyos).
+        const [bookRes, loansRes] = await Promise.all([
+          getBookApi(id),
+          getLoansApi({ bookId: id }),
         ]);
-        setAvailability(availRes);
-        setMovements(movRes.movements);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("no encontrado") || msg.includes("NOT_FOUND")) setNotFound(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [id, isAdmin]);
+        if (cancelled) return;
+        setBook(bookRes.book);
+        setLoans(loansRes.loans);
 
-  // load depende de isAdmin: mientras el rol no esté resuelto se piden solo
-  // catálogo y préstamos; al confirmarse ADMIN se vuelve a correr y trae el
-  // inventario. Así un USER nunca llega a pedir los endpoints de inventario.
-  useEffect(() => { load(); }, [load]);
+        // Inventario (disponibilidad + movimientos): solo ADMIN. Para el USER
+        // estos endpoints devuelven 403, así que no los pedimos.
+        if (isAdmin) {
+          const [availRes, movRes] = await Promise.all([
+            getBookAvailabilityApi(id),
+            getMovementsApi(id),
+          ]);
+          if (cancelled) return;
+          setAvailability(availRes);
+          setMovements(movRes.movements);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (!cancelled && (msg.includes("no encontrado") || msg.includes("NOT_FOUND"))) {
+          setNotFound(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, isAdmin, reloadKey]);
 
   async function handleLoan(e: React.FormEvent) {
     e.preventDefault();
@@ -257,7 +266,7 @@ export default function BookDetailPage({
       await createLoanApi({ bookId: id, notes: loanNotes || null });
       setLoanNotes("");
       setShowLoan(false);
-      load();
+      reload();
     } catch (err) {
       setLoanError(err instanceof Error ? err.message : "No se pudo crear el préstamo.");
     } finally {

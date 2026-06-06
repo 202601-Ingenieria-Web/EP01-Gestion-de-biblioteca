@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { getLoansApi, returnLoanApi } from "@/lib/client-api";
 import { useAuth } from "@/context/AuthContext";
 import type { Loan, ReturnCondition } from "@/types";
@@ -177,18 +177,19 @@ export default function LoansPage() {
   const [filter,   setFilter]   = useState<StatusFilter>("all");
   const [returning, setReturning] = useState<Loan | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const status = filter === "all" ? undefined : filter;
-      const { loans } = await getLoansApi({ status });
-      setLoans(loans);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = filter === "all" ? undefined : filter;
+        const { loans } = await getLoansApi({ status });
+        if (!cancelled) setLoans(loans);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [filter]);
-
-  useEffect(() => { load(); }, [load]);
 
   function handleReturned(updated: Loan) {
     setLoans((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));

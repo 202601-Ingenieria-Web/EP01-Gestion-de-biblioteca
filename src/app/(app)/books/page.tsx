@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getBooksApi, createBookApi } from "@/lib/client-api";
@@ -163,17 +163,18 @@ export default function BooksPage() {
   const [search,  setSearch]  = useState("");
   const [showCreate, setShowCreate] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { books } = await getBooksApi();
-      setBooks(books);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { books } = await getBooksApi();
+        if (!cancelled) setBooks(books);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const filtered = books.filter(
     (b) =>

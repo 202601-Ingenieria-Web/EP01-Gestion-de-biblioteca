@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getUsersApi, createUserApi, updateUserRoleApi } from "@/lib/client-api";
 import { useAuth } from "@/context/AuthContext";
@@ -178,17 +178,18 @@ export default function UsersPage() {
   const [search,  setSearch]  = useState("");
   const [showCreate, setShowCreate] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { users } = await getUsersApi();
-      setUsers(users);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { users } = await getUsersApi();
+        if (!cancelled) setUsers(users);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   function handleRoleChange(id: string, role: Role) {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
