@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📚 Sistema de Gestión de Biblioteca — La Casa de las Palabras
 
-## Getting Started
+Aplicación web para la **gestión integral de una biblioteca**: administración del
+catálogo de libros, control de inventario, registro de préstamos y devoluciones,
+y gestión de usuarios con distintos roles de acceso.
 
-First, run the development server:
+El sistema permite:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Catálogo de libros** — crear, consultar, editar y dar de baja libros.
+- **Inventario** — controlar las copias disponibles mediante movimientos de
+  entrada (`INCOMING`) y salida (`OUTGOING`). *(Acceso solo para administradores.)*
+- **Préstamos** — registrar préstamos a lectores y gestionar sus devoluciones,
+  con cálculo automático de la disponibilidad de cada libro.
+- **Usuarios y roles** — autenticación con dos perfiles: **administrador** (acceso
+  total) y **lector** (acceso al catálogo y sus préstamos).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 👩‍💻 Autores
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Ana Granada** — [@ana2002granada](https://github.com/ana2002granada)
+- **Juan Pablo Ramos** — [@JuanPablo-Ramos](https://github.com/JuanPablo-Ramos)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🌐 Proyecto desplegado
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La aplicación está disponible en línea en:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+🔗 **https://ep01gestiondebiblioteca.vercel.app/login**
 
-## Deploy on Vercel
+### Usuarios de acceso
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Rol           | Correo                  | Contraseña  | Permisos                                   |
+| ------------- | ----------------------- | ----------- | ------------------------------------------ |
+| Administrador | `admin@biblioteca.com`  | `Admin123!` | Acceso total (catálogo, inventario, usuarios, préstamos) |
+| Lector        | `user@biblioteca.com`   | `User123!`  | Catálogo y sus propios préstamos           |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛠️ Tecnologías
+
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **Tailwind CSS 4**
+- **Prisma 7** (ORM) sobre **PostgreSQL**
+- **Supabase** (base de datos, autenticación y almacenamiento de imágenes)
+- **Zod** (validación)
+
+---
+
+## 🚀 Instalación local
+
+### Requisitos previos
+
+- **Node.js 20+** y **npm**
+- Un proyecto en [Supabase](https://supabase.com) (base de datos PostgreSQL + Auth)
+
+### Pasos
+
+1. **Clonar el repositorio**
+
+   ```bash
+   git clone <url-del-repositorio>
+   cd gestion-de-biblioteca
+   ```
+
+2. **Instalar dependencias**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configurar las variables de entorno**
+
+   Copia el archivo de ejemplo y completa los valores con los datos de tu
+   proyecto de Supabase:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Debes definir:
+
+   | Variable                        | Dónde obtenerla (Supabase)                                  |
+   | ------------------------------- | ---------------------------------------------------------- |
+   | `DATABASE_URL`                  | Database → Connection string → **Transaction pooler** (puerto 6543, `?pgbouncer=true`) |
+   | `DIRECT_URL`                    | Database → Connection string → **Session pooler** (puerto 5432) |
+   | `NEXT_PUBLIC_SUPABASE_URL`      | Project Settings → API → Project URL                       |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API → anon public key                   |
+   | `SUPABASE_SERVICE_ROLE_KEY`     | Project Settings → API → service_role key *(secreta)*      |
+
+4. **Aplicar las migraciones a la base de datos**
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+5. **Cargar los datos de ejemplo** (usuarios admin/lector, libros y préstamos demo)
+
+   ```bash
+   npm run db:seed
+   ```
+
+6. **Levantar el servidor de desarrollo**
+
+   ```bash
+   npm run dev
+   ```
+
+   Abre [http://localhost:3000](http://localhost:3000) e inicia sesión con
+   cualquiera de los [usuarios de acceso](#usuarios-de-acceso).
+
+### Scripts disponibles
+
+| Script                   | Descripción                                       |
+| ------------------------ | ------------------------------------------------- |
+| `npm run dev`            | Servidor de desarrollo                            |
+| `npm run build`          | Compila la app para producción                    |
+| `npm run start`          | Sirve la build de producción                      |
+| `npm run db:seed`        | Carga los datos de ejemplo                        |
+| `npm run prisma:studio`  | Abre Prisma Studio para inspeccionar la BD        |
+</content>
+</invoke>
